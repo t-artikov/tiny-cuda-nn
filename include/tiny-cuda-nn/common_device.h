@@ -413,7 +413,7 @@ __device__ inline void pos_fract(const float input, float* pos, float* pos_deriv
 
 template <typename F, typename FPRIME>
 __device__ inline void pos_fract(const float input, float* pos, float* pos_derivative, uint32_t* pos_grid, float scale, F interpolation_fun, FPRIME interpolation_fun_derivative) {
-	*pos = input * scale + 0.5f;
+	*pos = input * scale;
 	int tmp = floorf(*pos);
 	*pos_grid = (uint32_t)tmp;
 	*pos -= (float)tmp;
@@ -423,7 +423,7 @@ __device__ inline void pos_fract(const float input, float* pos, float* pos_deriv
 
 template <typename F>
 __device__ inline void pos_fract(const float input, float* pos, uint32_t* pos_grid, float scale, F interpolation_fun) {
-	*pos = input * scale + 0.5f;
+	*pos = input * scale;
 	int tmp = floorf(*pos);
 	*pos_grid = (uint32_t)tmp;
 	*pos -= (float)tmp;

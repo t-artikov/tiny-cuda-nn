@@ -179,8 +179,8 @@ __global__ void kernel_grid(
 	grid += hashmap_offset_table[level] * N_FEATURES_PER_LEVEL;
 	const uint32_t hashmap_size = hashmap_offset_table[level + 1] - hashmap_offset_table[level];
 
-	const float scale = exp2f(level * log2_per_level_scale) * base_resolution - 1.0f;
-	const uint32_t grid_resolution = ((uint32_t)ceil(scale) + 1);
+	const uint32_t grid_resolution = exp2f(level * log2_per_level_scale) * (base_resolution - 1) + 1;
+	const float scale = (float)grid_resolution - 1.0f;
 
 	float pos[N_POS_DIMS];
 	float pos_derivative[N_POS_DIMS];
@@ -338,8 +338,8 @@ __global__ void kernel_grid_backward(
 	grid_gradient += hashmap_offset_table[level] * N_FEATURES_PER_LEVEL;
 	const uint32_t hashmap_size = hashmap_offset_table[level + 1] - hashmap_offset_table[level];
 
-	const float scale = exp2f(level * log2_per_level_scale) * base_resolution - 1.0f;
-	const uint32_t grid_resolution = ((uint32_t)ceil(scale) + 1);
+	const uint32_t grid_resolution = exp2f(level * log2_per_level_scale) * (base_resolution - 1) + 1;
+	const float scale = (float)grid_resolution - 1.0f;
 
 	auto add_grid_gradient = [&](const uint32_t local_pos[N_POS_DIMS], const vector_t<T, N_FEATURES_PER_THREAD>& grad, const float weight) {
 		uint32_t index = grid_index<N_POS_DIMS, N_FEATURES_PER_LEVEL>(grid_type, feature, hashmap_size, grid_resolution, local_pos);
@@ -889,8 +889,8 @@ public:
 
 		for (uint32_t i = 0; i < m_n_levels; ++i) {
 			// Compute dense params required for the given level
-			const float scale = exp2f(i * std::log2(per_level_scale)) * base_resolution - 1.0f;
-			const uint32_t resolution = (uint32_t)(ceilf(scale)) + 1;
+			const uint32_t resolution = exp2f(i * std::log2(per_level_scale)) * (base_resolution - 1) + 1;
+			const float scale = (float)resolution - 1.0f;
 
 			uint32_t max_params = std::numeric_limits<uint32_t>::max()/2;
 			uint32_t params_in_level = std::pow((float)resolution, N_POS_DIMS) > (float)max_params ? max_params : powi(resolution, N_POS_DIMS);

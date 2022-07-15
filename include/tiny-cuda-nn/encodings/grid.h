@@ -157,7 +157,8 @@ __global__ void kernel_grid(
 		max_level = (max_level * num_grid_features) / N_FEATURES_PER_LEVEL;
 	}
 
-	if (level >= max_level + 1e-3f) {
+	const float level_mask = std::min(max_level - level + 1.f, 1.f);
+	if (level_mask <= 0.f) {
 		if (encoded_positions) {
 			#pragma unroll
 			for (uint32_t f = 0; f < N_FEATURES_PER_LEVEL; ++f) {
@@ -256,7 +257,7 @@ __global__ void kernel_grid(
 
 		#pragma unroll
 		for (uint32_t f = 0; f < N_FEATURES_PER_LEVEL; ++f) {
-			encoded_positions[i + (level * N_FEATURES_PER_LEVEL + f) * num_elements] = result[f];
+			encoded_positions[i + (level * N_FEATURES_PER_LEVEL + f) * num_elements] = result[f] * (T)level_mask;
 		}
 	}
 
@@ -291,7 +292,7 @@ __global__ void kernel_grid(
 
 				#pragma unroll
 				for (uint32_t feature = 0; feature < N_FEATURES_PER_LEVEL; ++feature) {
-					grads[feature][grad_dim] += weight * ((float)val_right[feature] - (float)val_left[feature]) * pos_derivative[grad_dim];
+					grads[feature][grad_dim] += level_mask * weight * ((float)val_right[feature] - (float)val_left[feature]) * pos_derivative[grad_dim];
 				}
 			}
 		}
@@ -331,7 +332,8 @@ __global__ void kernel_grid_backward(
 		max_level = (max_level * num_grid_features) / N_FEATURES_PER_LEVEL;
 	}
 
-	if (level > max_level + 1e-3f) {
+	const float level_mask = std::min(max_level - level + 1.f, 1.f);
+	if (level_mask <= 0.f) {
 		return;
 	}
 
@@ -346,7 +348,7 @@ __global__ void kernel_grid_backward(
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600 // atomicAdd(__half2) is only supported with compute capability 60 and above
 		if (N_FEATURES_PER_THREAD > 1 && std::is_same<GRAD_T, __half>::value) {
 			for (uint32_t f = 0; f < N_FEATURES_PER_THREAD; f += 2) {
-				__half2 v = {(__half)((float)grad[f] * weight), (__half)((float)grad[f+1] * weight)};
+				__half2 v = {(__half)((float)grad[f] * weight * level_mask), (__half)((float)grad[f+1] * weight * level_mask)};
 				atomicAdd((__half2*)&grid_gradient[index + f], v);
 			}
 		} else
@@ -357,7 +359,7 @@ __global__ void kernel_grid_backward(
 				//printf("Attempted to use atomicAdd(__half)\n")
 			} else {
 				for (uint32_t f = 0; f < N_FEATURES_PER_THREAD; ++f) {
-					atomicAdd((float*)&grid_gradient[index + f], (float)grad[f] * weight);
+					atomicAdd((float*)&grid_gradient[index + f], (float)grad[f] * weight * level_mask);
 				}
 			}
 		}
@@ -518,7 +520,8 @@ __global__ void kernel_grid_backward_input_backward_grid(
 		max_level = (max_level * num_grid_features) / N_FEATURES_PER_LEVEL;
 	}
 
-	if (level > max_level + 1e-3f) {
+	const float level_mask = std::min(max_level - level + 1.f, 1.f);
+	if (level_mask <= 0.f) {
 		return;
 	}
 
@@ -533,7 +536,7 @@ __global__ void kernel_grid_backward_input_backward_grid(
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600 // atomicAdd(__half2) is only supported with compute capability 60 and above
 		if (N_FEATURES_PER_THREAD > 1 && std::is_same<GRAD_T, __half>::value) {
 			for (uint32_t f = 0; f < N_FEATURES_PER_THREAD; f += 2) {
-				__half2 v = {(__half)((float)grad[f] * weight), (__half)((float)grad[f+1] * weight)};
+				__half2 v = {(__half)((float)grad[f] * weight * level_mask), (__half)((float)grad[f+1] * weight * level_mask)};
 				atomicAdd((__half2*)&grid_gradient[index + f], v);
 			}
 		} else
@@ -544,7 +547,7 @@ __global__ void kernel_grid_backward_input_backward_grid(
 				//printf("Attempted to use atomicAdd(__half)\n")
 			} else {
 				for (uint32_t f = 0; f < N_FEATURES_PER_THREAD; ++f) {
-					atomicAdd((float*)&grid_gradient[index + f], (float)grad[f] * weight);
+					atomicAdd((float*)&grid_gradient[index + f], (float)grad[f] * weight * level_mask);
 				}
 			}
 		}
@@ -642,7 +645,8 @@ __global__ void kernel_grid_backward_input_backward_input(
 		max_level = (max_level * num_grid_features) / N_FEATURES_PER_LEVEL;
 	}
 
-	if (level > max_level + 1e-3f) {
+	const float level_mask = std::min(max_level - level + 1.f, 1.f);
+	if (level_mask <= 0.f) {
 		return;
 	}
 
@@ -773,7 +777,7 @@ __global__ void kernel_grid_backward_input_backward_input(
 			}
 		}
 
-		atomicAdd((float*)&dL_dx(grad_dim, i), grad_out);
+		atomicAdd((float*)&dL_dx(grad_dim, i), grad_out * level_mask);
 	}
 }
 
